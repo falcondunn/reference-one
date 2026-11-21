@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Measure | RndB</title>
+<meta name="description" content="Measure your earphones with the Reference One: every sweep in a list, one graph against a target, and an EQ you can export.">
+<meta name="theme-color" content="#faf9f5"><!-- taste-skill-ignore: the owner chose this canvas -->
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,300..500&display=swap">
+<link rel="stylesheet" href="css/style.css?v=2026-11-01.3">
+</head>
+<body>
+<a class="skip" href="#graph">Skip to the graph</a>
+
+<nav class="site-nav" aria-label="Main">
+  <a class="site-nav__mark" translate="no" href="../index.html" aria-label="RndB, home">RndB</a>
+  <ul class="site-nav__links">
+    <li><a href="../product.html">Product</a></li>
+    <li><a href="../learn.html">Learn</a></li>
+    <li><a href="../index.html#faq">FAQ</a></li>
+    <li><a href="index.html" aria-current="page">App</a></li>
+  </ul>
+</nav>
+
+<div class="studio">
+  <aside class="panel side" aria-label="Measurements, EQ and rig">
+    <div class="tabs" role="group" aria-label="Sidebar">
+      <button type="button" aria-pressed="true" data-tab="list">Measurements</button>
+      <button type="button" aria-pressed="false" data-tab="eq">EQ</button>
+      <button type="button" aria-pressed="false" data-tab="rig">Rig</button>
+    </div>
+
+    <div class="side__body" data-pane="list">
+      <input class="field" type="search" id="searchInput" placeholder="Search measurements…" aria-label="Search measurements" autocomplete="off" spellcheck="false">
+      <ul class="list" id="entryList"></ul>
+      <p class="empty" id="listEmpty">Measure an earphone or import a curve, and it appears here.</p>
+    </div>
+
+    <div class="side__body" data-pane="eq" hidden>
+      <label class="label" for="eqCurveSelect">EQ for</label>
+      <select class="field" id="eqCurveSelect"></select>
+      <div class="row">
+        <button class="btn btn--primary" type="button" id="autoEqBtn">AutoEQ</button>
+        <button class="btn" type="button" id="addFilterBtn">Add filter</button>
+        <button class="btn" type="button" id="channelMatchBtn" hidden>Match to R</button>
+      </div>
+      <details class="advanced">
+        <summary class="btn btn--quiet">Advanced</summary>
+        <div class="advanced__grid">
+          <label class="label">Filters<select class="field" id="aeCount"><option>5</option><option>8</option><option selected>10</option><option>15</option></select></label>
+          <label class="label">Max boost<select class="field" id="aeBoost"><option value="3">3 dB</option><option value="6" selected>6 dB</option><option value="10">10 dB</option></select></label>
+          <label class="label">Max cut<select class="field" id="aeCut"><option value="6">6 dB</option><option value="12" selected>12 dB</option><option value="18">18 dB</option></select></label>
+          <label class="label">Q up to<select class="field" id="aeQ"><option value="2">2</option><option value="5" selected>5</option><option value="8">8</option></select></label>
+          <label class="label">Up to<select class="field" id="aeRange"><option value="10000" selected>10 kHz</option><option value="16000">16 kHz</option><option value="20000">20 kHz</option></select></label>
+        </div>
+        <p class="note">The coupler is a guide above 8&nbsp;kHz, so AutoEQ stops at 10&nbsp;kHz unless you set it higher.</p>
+      </details>
+      <div class="row">
+        <button class="btn btn--quiet" type="button" id="bypassBtn" aria-pressed="false">Bypass</button>
+        <button class="btn btn--quiet" type="button" id="filterCurvesBtn" aria-pressed="true">Filter curves</button>
+        <button class="btn btn--quiet" type="button" id="sortBtn">Sort</button>
+        <button class="btn btn--quiet" type="button" id="clearBtn">Clear</button>
+      </div>
+      <div class="filters" id="filterList"></div>
+      <p class="empty" id="eqEmpty">No filters yet. Run AutoEQ, or add one and drag its dot on the graph.</p>
+      <div class="eq-sum"><span>Preamp</span><b class="num" id="preampOut">0.0 dB</b></div>
+      <div class="eq-sum"><span id="eqErrorLabel">RMS error to the target</span><b class="num" id="eqErrorOut">–</b></div>
+    </div>
+
+    <div class="side__body" data-pane="rig" hidden>
+      <section class="rig" aria-labelledby="rigConnectH">
+        <h2 class="rig__h" id="rigConnectH">Connect</h2>
+        <label class="label" for="audioInputSelect">Input</label>
+        <select class="field" id="audioInputSelect" disabled><option>No devices found</option></select>
+        <label class="label" for="audioOutputSelect">Output</label>
+        <select class="field" id="audioOutputSelect" disabled><option>No devices found</option></select>
+        <div class="row">
+          <button class="btn btn--primary" type="button" id="connectBtn" disabled>Connect</button>
+          <button class="btn" type="button" id="refreshBtn">Refresh</button>
+        </div>
+        <div class="meter"><div class="meter__track" aria-hidden="true"><div class="meter__fill" id="levelBarFill"></div></div><span class="visually-hidden">Input level</span><span class="num" id="levelDb">−∞ dB</span></div>
+        <div class="info" id="connectInfo" aria-live="polite"><p>Plug in a Reference One over USB-C. It needs no driver.</p></div>
+      </section>
+
+      <section class="rig" aria-labelledby="rigRev3H">
+        <h2 class="rig__h" id="rigRev3H">Rev 3 sweep</h2>
+        <div class="rig__grid">
+          <label class="label">Sweep
+            <select class="field" id="sweepType"><option value="log">Log chirp (recommended)</option><option value="step">Stepped sine</option></select></label>
+          <label class="label">Duration
+            <!-- LONGER IS NOT AUTOMATICALLY BETTER, and on
+                 this rig it is currently worse. A log sweep does
+                 spend little time at the top - 174 ms above
+                 15 kHz in a 3 s sweep - and on the old bore that
+                 dominated: spread above 8 kHz was 23.2 dB at 3 s
+                 against 2.1 dB at 12 s.
+                 Re-measured 2026-09-07 on the tapered bore, the
+                 order REVERSED: three 3 s sweeps (14 s apart)
+                 repeated to 0.6 dB above 8 kHz, three 20 s
+                 sweeps (66 s apart) to 6.3 dB. The limit is no
+                 longer sweep energy, it is the eartip drifting
+                 over the longer span. Pick the duration that
+                 keeps the whole set SHORT unless the seal is
+                 known to be rock solid. -->
+            <select class="field" id="sweepDuration"><option value="2">2 s (rough)</option><option value="5">5 s</option><option value="10" selected>10 s</option><option value="20">20 s (best treble)</option></select></label>
+          <label class="label">Level
+            <!-- MEASURED CEILING, not a guess. On a sealed
+                 coupler the microphone acoustically overloads
+                 above about -14 dBFS: driving -14 -> -8 gained
+                 only 1.2 dB at the mic while S/N fell 64 -> 51
+                 dB. That is soft compression, so it produces NO
+                 digital clipping and the clip detector cannot
+                 see it - which is why the choices stop here.
+                 Below about -26 the treble goes noise-limited.
+                 SUPERSEDED on the tapered bore, which is ~5 dB
+                 hotter: -14 peaks at -0.0 dBFS and clips. -20 is
+                 the level (measure_multi.py: peak -6.9 dBFS, S/N
+                 36.9 dB), so it is the default. -->
+            <select class="field" id="sweepLevel"><option value="-26">−26 dBFS (quiet)</option><option value="-20" selected>−20 dBFS</option><option value="-14">−14 dBFS (clips)</option><option value="-8">−8 dBFS (mic overloads)</option></select></label>
+          <label class="label">Scale
+            <!-- RAW is what you want when checking the rig
+                 itself. "Relative" subtracts the level at 1 kHz,
+                 which hides any overall gain error and makes two
+                 different seatings look more alike than they are.
+                 Raw shows the measured magnitude as it comes out
+                 of the deconvolution - no normalisation, and no
+                 calibration even if one is loaded. -->
+            <select class="field" id="sweepScale"><option value="relative" selected>Relative (0 dB at 1 kHz)</option><option value="raw">Raw (uncalibrated)</option></select></label>
+        </div>
+        <div class="row"><span class="note">Sample rate <span class="num" id="sampleRateDisplay">48000 Hz</span></span>
+          <button class="btn" type="button" id="calibrateBtn" disabled>Calibrate</button></div>
+        <div id="measureProgress" style="display:none"><div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+          <p class="note" id="progressText">Measuring…</p></div>
+        <div class="result" id="measureResult" aria-live="polite" style="display:none"></div>
+      </section>
+
+      <section class="rig" id="panel-v4" aria-labelledby="rigV4H">
+        <h2 class="rig__h" id="rigV4H">Reference One V4</h2>
+        <p class="note">Impedance and response from the V4’s two channels: the earphone’s voltage or the mic, and its current. Every sweep here plays at −20&nbsp;dBFS on one side.</p>
+        <p class="note">For each side, seat that earpiece in the coupler. Take its impedance with MODE at IMP, then its response with MODE at MEAS, without reseating it. The response is per volt, and the volts come from that impedance.</p>
+        <script>   /* a browser blocks the V4 panel's modules from file://: say so, or every button is dead */
+            if (location.protocol === "file:") document.currentScript.insertAdjacentHTML("beforebegin",
+                '<div class="result-badge error">Opened as a file: the browser blocks the V4 panel, so no button ' +
+                'here works. Open the app through its web server (http://).</div>');
+        </script>
+        <label class="check"><input type="checkbox" id="v4Safe">No earphone is in anyone’s ear: it is in the coupler, or the jack is empty.</label>
+        <div class="result-badge error" id="v4DefaultWarn" style="display:none">The V4 is the system’s default output, so every app’s sound plays through it, uncapped. Make another device the default in the system’s sound settings.</div>
+        <div class="result-badge error" id="v4CodecWarn" style="display:none">Two devices here are named USB AUDIO CODEC: the V4 and another product on the same TI chip (Windows calls the second one “2- USB AUDIO CODEC”). Unplug the other one, or make sure the input and the output chosen above are both the V4: Check refuses any other device.</div>
+        <label class="label" for="v4CalFile">Calibration file</label>
+        <input class="field field--file" type="file" id="v4CalFile" accept=".json,application/json">
+        <div class="row">
+          <input class="field" type="text" id="v4Serial" placeholder="or the serial on the base: V4-0001…" aria-label="Serial on the base" autocomplete="off" spellcheck="false">
+          <button class="btn" type="button" id="v4SerialBtn" title="Fetches data/v4-calibration/v4-calibration-SERIAL.json from this site">Load by serial</button>
+        </div>
+        <span class="note" id="v4CalInfo">None loaded: K = 1, mic −38&nbsp;dBV/Pa (datasheet)</span>
+        <div class="row">
+          <button class="btn btn--primary" type="button" id="v4CheckBtn" title="MODE at IMP, RANGE at NORMAL. Confirms a V4 from its signal">Check</button>
+          <button class="btn" type="button" id="v4KBtn" title="MODE at IMP, the jack EMPTY. Two 20 s sweeps">Calibrate K</button>
+          <button class="btn" type="button" id="v4ZLBtn" title="MODE at IMP">Impedance L</button>
+          <button class="btn" type="button" id="v4ZRBtn" title="MODE at IMP">Impedance R</button>
+          <button class="btn" type="button" id="v4SLBtn" title="MODE at MEAS, after that side's impedance">Response L</button>
+          <button class="btn" type="button" id="v4SRBtn" title="MODE at MEAS, after that side's impedance">Response R</button>
+          <button class="btn" type="button" id="v4TLBtn" title="MODE at MEAS, after that side's response. A 3.5 s tone near 1 kHz, NORMAL only">THD L</button>
+          <button class="btn" type="button" id="v4TRBtn" title="MODE at MEAS, after that side's response. A 3.5 s tone near 1 kHz, NORMAL only">THD R</button>
+          <button class="btn" type="button" id="v4ZCsvBtn" disabled title="|Z| and phase of each side measured, 300 log-spaced points, 20 Hz-20 kHz">Impedance CSV</button>
+        </div>
+        <div class="result" id="v4Result" aria-live="polite" style="display:none"></div>
+        <canvas class="plot" id="v4ZCanvas" role="img" aria-label="Impedance of each side"></canvas>
+        <canvas class="plot" id="v4SCanvas" role="img" aria-label="Response of each side, dB SPL per volt"></canvas>
+      </section>
+    </div>
+
+    <div class="side__foot" data-foot="list">
+      <button class="btn" type="button" id="newEntryBtn">New earphone</button>
+      <details class="menu menu--up">
+        <summary class="btn">Session</summary>
+        <div class="menu__list">
+          <button type="button" id="exportSessionBtn">Export session</button>
+          <button type="button" id="importSessionBtn">Import session</button>
+        </div>
+      </details>
+    </div>
+    <div class="side__foot" data-foot="eq" hidden>
+      <button class="btn" type="button" id="copyApoBtn">Copy APO text</button>
+      <button class="btn" type="button" id="graphicEqBtn">GraphicEQ</button>
+      <details class="menu menu--up">
+        <summary class="btn">More</summary>
+        <div class="menu__list">
+          <button type="button" id="eqCsvBtn">Download CSV</button>
+          <button type="button" id="eqJsonBtn">Download JSON</button>
+          <button type="button" id="importEqBtn">Import an EQ file</button>
+          <button type="button" id="pasteApoBtn">Paste APO text</button>
+          <label class="menu__check"><input type="checkbox" id="apoBothCheck">L and R under Channel lines</label>
+        </div>
+      </details>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="bar">
+      <div>
+        <h1 id="entryTitle">Measure</h1>
+        <p class="bar__meta"><span class="status-dot offline" id="statusDot" aria-hidden="true"></span><span id="statusText">No hardware: connect a Reference One in the Rig tab</span></p>
+      </div>
+      <div class="tools">
+        <button class="btn btn--primary" type="button" id="measureLBtn">Measure L</button>
+        <button class="btn" type="button" id="measureRBtn">Measure R</button>
+        <span class="gap" aria-hidden="true"></span>
+        <select class="btn" id="smoothingSelect" aria-label="Smoothing"><option value="0">No smoothing</option><option value="48">1/48 octave</option><option value="24">1/24 octave</option><option value="12">1/12 octave</option><option value="6">1/6 octave</option><option value="3">1/3 octave</option></select>
+        <select class="btn" id="rangeSelect" aria-label="Graph range"><option value="30">30 dB</option><option value="50">50 dB</option><option value="70">70 dB</option></select>
+        <select class="btn" id="normalizeSelect" aria-label="Normalize"><option value="0">Normalize off</option><option value="500">Normalize 500 Hz</option><option value="1000">Normalize 1 kHz</option><option value="2000">Normalize 2 kHz</option></select>
+        <button class="btn" type="button" id="inspectBtn" aria-pressed="false">Inspect</button>
+        <span class="gap" aria-hidden="true"></span>
+        <button class="btn" type="button" id="averageBtn">Average</button>
+        <button class="btn" type="button" id="hideAllBtn">Hide all</button>
+        <button class="btn" type="button" id="recolourBtn">Recolour</button>
+        <span class="gap" aria-hidden="true"></span>
+        <button class="btn" type="button" id="importCurveBtn">Import</button>
+        <details class="menu">
+          <summary class="btn">Export</summary>
+          <div class="menu__list">
+            <button type="button" id="exportCsvBtn">Shown curves (CSV)</button>
+            <button type="button" id="exportPngBtn">Graph (PNG)</button>
+          </div>
+        </details>
+        <button class="btn btn--quiet" type="button" id="helpBtn" aria-label="Help and shortcuts">?</button>
+      </div>
+    </div>
+    <p class="status" id="studioStatus" role="status" aria-live="polite"></p>
+    <div class="panel graph" id="graph"><canvas id="frCanvas" tabindex="0" aria-label="Frequency response graph. In the EQ, choose a filter with [ and ] or by its dot, then move it with the arrow keys; Shift with the arrows changes its Q."></canvas></div>
+    <div class="chips" id="targetChips"></div>
+    <div class="cards" id="cards"></div>
+  </main>
+</div>
+
+<dialog class="dialog" id="helpDialog" aria-labelledby="helpH">
+  <h2 id="helpH">Help and shortcuts</h2>
+  <dl class="keys">
+    <div><dt>Space</dt><dd>Measure the last side again</dd></div>
+    <div><dt>1, 2, 3</dt><dd>Measurements, EQ, Rig</dd></div>
+    <div><dt>?</dt><dd>This sheet</dd></div>
+    <div><dt>[ and ]</dt><dd>On the EQ graph, choose the previous or next filter</dd></div>
+    <div><dt>Arrows</dt><dd>On the graph, move the chosen filter; with Shift, change its Q</dd></div>
+  </dl>
+  <p>Above 8&nbsp;kHz the coupler is a guide, not a reference, so AutoEQ stops at 10&nbsp;kHz unless you set it higher.</p>
+  <h3>Where the targets come from</h3>
+  <p>The built-in targets are AutoEq’s 711 targets, by Jaakko Pasanen, under the MIT License:</p>
+  <p class="license" id="licenseText">MIT License. Copyright (c) 2018-2022 Jaakko Pasanen.</p>
+  <form method="dialog"><button class="btn btn--primary">Close</button></form>
+</dialog>
+
+<dialog class="dialog" id="pasteDialog" aria-labelledby="pasteH">
+  <h2 id="pasteH">Paste APO text</h2>
+  <label class="visually-hidden" for="pasteText">APO text</label>
+  <textarea class="field" id="pasteText" rows="10" spellcheck="false" autocomplete="off" placeholder="Preamp: -4.6 dB&#10;Filter 1: ON PK Fc 105 Hz Gain 2.5 dB Q 0.70…"></textarea>
+  <p class="status status--error" id="pasteStatus" role="status" aria-live="polite"></p>
+  <div class="row">
+    <button class="btn btn--primary" type="button" id="pasteApplyBtn">Use these filters</button>
+    <button class="btn" type="button" id="pasteCancelBtn">Cancel</button>
+  </div>
+</dialog>
+
+<input type="file" id="curveFile" accept=".txt,.csv,.frd,text/plain,text/csv" multiple hidden>
+<input type="file" id="targetFile" accept=".txt,.csv,text/plain,text/csv" hidden>
+<input type="file" id="sessionFile" accept=".json,application/json" hidden>
+<input type="file" id="eqFile" accept=".txt,.csv,.json,text/plain,text/csv,application/json" hidden>
+
+<!-- ?v= on every asset: bump it with any change to css/ or js/, or a browser holding a cached
+     audio-engine.js runs it with the new page. That engine is what caps a V4 at -20 dBFS. -->
+<script src="js/fft.js?v=2026-11-01.3"></script>
+<script src="js/audio-engine.js?v=2026-11-01.3"></script>
+<script src="js/analysis.js?v=2026-11-01.3"></script>
+<script src="js/app.js?v=2026-11-01.3"></script>
+<script type="module" src="js/v4/v4-panel.mjs?v=2026-11-01.3"></script>
+<script type="module" src="js/studio/studio.mjs?v=2026-11-01.3"></script>
+</body>
+</html>
